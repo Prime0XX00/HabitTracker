@@ -1,29 +1,35 @@
-const express = require("express");
-const { ApolloServer, gql } = require("apollo-server-express");
+import dotenv from "dotenv";
+import cors from "cors";
+import express from "express";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@as-integrations/express5";
+import { typeDefs } from "./graphql/typeDefs";
+import { resolvers } from "./graphql/resolvers";
 
-const typeDefs = gql`
-	type Query {
-		hello: String
-	}
-`;
-
-const resolvers = {
-	Query: {
-		hello: () => "Hello world!",
-	},
-};
-const server = new ApolloServer({ typeDefs, resolvers });
+dotenv.config();
 const app = express();
+const port = process.env.PORT || 4000;
 
-const main = async () => {
+const bootstrapServer = async () => {
+	const server = new ApolloServer({
+		typeDefs,
+		resolvers,
+	});
 	await server.start();
-	server.applyMiddleware({ app });
+
+	app.use(cors());
+	app.use(express.json());
+	app.use(express.urlencoded({ extended: true }));
+	app.use("/graphql", expressMiddleware(server));
+
+	app.get("/", (req, res) => {
+		res.send("Hello World!");
+	});
+
+	app.listen(port, () => {
+		console.log(`Express ready at http://localhost:${port}`);
+		console.log(`GraphQL ready at http://localhost:${port}/graphql`);
+	});
 };
 
-main().then(
-	app.listen({ port: 4000 }, () =>
-		console.log(
-			`Server ready at http://localhost:4000${server.graphqlPath}`,
-		),
-	),
-);
+bootstrapServer();
